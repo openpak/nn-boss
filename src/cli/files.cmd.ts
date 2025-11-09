@@ -123,12 +123,16 @@ const createCmd = new Command('create')
 	.requiredOption('--file <file>', 'Path of the file to upload')
 	.option('--country <country...>', 'Countries for this task file')
 	.option('--lang <language...>', 'Languages for this task file')
+	.option('--attribute1 [attribute1]', 'Attribute 1 for this task file')
+	.option('--attribute2 [attribute2]', 'Attribute 2 for this task file')
+	.option('--attribute3 [attribute3]', 'Attribute 3 for this task file')
+	.option('--desc [desc]', 'Description for this task file')
 	.option('--name-as-id', 'Force the name as the data ID')
 	.option('--notify-new <type...>', 'Add entry to NotifyNew')
 	.option('--notify-led', 'Enable NotifyLED')
 	.action(commandHandler<[string, string]>(async (cmd): Promise<void> => {
 		const [appId, taskId] = cmd.args;
-		const opts = cmd.opts<{ name: string; country: string[]; notifyNew: string[]; notifyLed: boolean; lang: string[]; nameAsId?: boolean; type: string; file: string }>();
+		const opts = cmd.opts<{ name: string; country: string[]; notifyNew: string[]; notifyLed: boolean; lang: string[]; attribute1?: string; attribute2?: string; attribute3?: string; desc?: string; nameAsId?: boolean; type: string; file: string }>();
 		const fileBuf = await fs.readFile(opts.file);
 		const ctx = getCliContext();
 		const { file } = await ctx.grpc.uploadFileWUP({
@@ -137,6 +141,12 @@ const createCmd = new Command('create')
 			name: opts.name,
 			supportedCountries: opts.country,
 			supportedLanguages: opts.lang,
+			attributes: {
+				attribute1: opts.attribute1,
+				attribute2: opts.attribute2,
+				attribute3: opts.attribute3,
+				description: opts.desc
+			},
 			type: opts.type,
 			nameEqualsDataId: opts.nameAsId ?? false,
 			data: fileBuf,
@@ -168,7 +178,7 @@ const deleteCmd = new Command('delete')
 	}));
 
 export const fileCmd = new Command('file')
-	.description('Manage all the task files in BOSS')
+	.description('Manage all the Wii U task files in BOSS')
 	.addCommand(listCmd)
 	.addCommand(createCmd)
 	.addCommand(deleteCmd)
