@@ -4,6 +4,7 @@ import { Readable } from 'node:stream';
 import { request } from 'undici';
 import { Command } from 'commander';
 import { decryptWiiU } from '@pretendonetwork/boss-crypto';
+import { PlatformType } from '@pretendonetwork/grpc/boss/v2/platform_type';
 import { commandHandler, getCliContext } from './utils';
 import { logOutputList, logOutputObject } from './output';
 
@@ -11,12 +12,19 @@ const listCmd = new Command('ls')
 	.description('List all task files in BOSS')
 	.argument('<app_id>', 'BOSS app to search in')
 	.argument('<task_id>', 'Task to search in')
+	.option('-c, --country [country]', 'Country to filter with')
+	.option('-l, --language [language]', 'Language to filter with')
+	.option('-a, --any', 'Shows any file regardless of country and language requirements')
 	.action(commandHandler<[string, string]>(async (cmd): Promise<void> => {
 		const [appId, taskId] = cmd.args;
+		const opts = cmd.opts<{ country?: string; language?: string; any: boolean }>();
 		const ctx = getCliContext();
-		const { files } = await ctx.grpc.listFiles({
+		const { files } = await ctx.grpc.listFilesWUP({
 			bossAppId: appId,
-			taskId: taskId
+			taskId: taskId,
+			country: opts.country,
+			language: opts.language,
+			any: opts.any
 		});
 		logOutputList(files, {
 			format: cmd.format,
@@ -38,9 +46,10 @@ const viewCmd = new Command('view')
 	.action(commandHandler<[string, string, bigint]>(async (cmd): Promise<void> => {
 		const [appId, taskId, dataId] = cmd.args;
 		const ctx = getCliContext();
-		const { files } = await ctx.grpc.listFiles({
+		const { files } = await ctx.grpc.listFilesWUP({
 			bossAppId: appId,
-			taskId: taskId
+			taskId: taskId,
+			any: true
 		});
 		const file = files.find(v => v.dataId === dataId);
 		if (!file) {
@@ -76,9 +85,10 @@ const downloadCmd = new Command('download')
 	.action(commandHandler<[string, string, bigint]>(async (cmd): Promise<void> => {
 		const [appId, taskId, dataId] = cmd.args;
 		const ctx = getCliContext();
-		const { files } = await ctx.grpc.listFiles({
+		const { files } = await ctx.grpc.listFilesWUP({
 			bossAppId: appId,
-			taskId: taskId
+			taskId: taskId,
+			any: true
 		});
 		const file = files.find(v => v.dataId === dataId);
 		if (!file) {
@@ -122,20 +132,30 @@ const createCmd = new Command('create')
 	.requiredOption('--file <file>', 'Path of the file to upload')
 	.option('--country <country...>', 'Countries for this task file')
 	.option('--lang <language...>', 'Languages for this task file')
+	.option('--attribute1 [attribute1]', 'Attribute 1 for this task file')
+	.option('--attribute2 [attribute2]', 'Attribute 2 for this task file')
+	.option('--attribute3 [attribute3]', 'Attribute 3 for this task file')
+	.option('--desc [desc]', 'Description for this task file')
 	.option('--name-as-id', 'Force the name as the data ID')
 	.option('--notify-new <type...>', 'Add entry to NotifyNew')
 	.option('--notify-led', 'Enable NotifyLED')
 	.action(commandHandler<[string, string]>(async (cmd): Promise<void> => {
 		const [appId, taskId] = cmd.args;
-		const opts = cmd.opts<{ name: string; country: string[]; notifyNew: string[]; notifyLed: boolean; lang: string[]; nameAsId?: boolean; type: string; file: string }>();
+		const opts = cmd.opts<{ name: string; country: string[]; notifyNew: string[]; notifyLed: boolean; lang: string[]; attribute1?: string; attribute2?: string; attribute3?: string; desc?: string; nameAsId?: boolean; type: string; file: string }>();
 		const fileBuf = await fs.readFile(opts.file);
 		const ctx = getCliContext();
-		const { file } = await ctx.grpc.uploadFile({
+		const { file } = await ctx.grpc.uploadFileWUP({
 			taskId: taskId,
 			bossAppId: appId,
 			name: opts.name,
 			supportedCountries: opts.country,
 			supportedLanguages: opts.lang,
+			attributes: {
+				attribute1: opts.attribute1,
+				attribute2: opts.attribute2,
+				attribute3: opts.attribute3,
+				description: opts.desc
+			},
 			type: opts.type,
 			nameEqualsDataId: opts.nameAsId ?? false,
 			data: fileBuf,
@@ -160,13 +180,14 @@ const deleteCmd = new Command('delete')
 		const ctx = getCliContext();
 		await ctx.grpc.deleteFile({
 			bossAppId: appId,
-			dataId: dataId
+			dataId: dataId,
+			platformType: PlatformType.PLATFORM_TYPE_WUP
 		});
 		console.log(`Deleted task file with ID ${dataId}`);
 	}));
 
 export const fileCmd = new Command('file')
-	.description('Manage all the task files in BOSS')
+	.description('Manage all the Wii U task files in BOSS')
 	.addCommand(listCmd)
 	.addCommand(createCmd)
 	.addCommand(deleteCmd)
