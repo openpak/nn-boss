@@ -1,4 +1,4 @@
-import type { GetNEXDataResponse } from '@pretendonetwork/grpc/account/get_nex_data_rpc';
+import type { GetNEXDataResponse } from '@pretendonetwork/grpc/account/v2/get_nex_data_rpc';
 
 declare global {
 	namespace Express {

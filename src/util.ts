@@ -1,20 +1,20 @@
 import crypto from 'node:crypto';
 import fs from 'fs-extra';
 import { createChannel, createClient, Metadata } from 'nice-grpc';
-import { AccountDefinition } from '@pretendonetwork/grpc/account/account_service';
+import { AccountServiceDefinition } from '@pretendonetwork/grpc/account/v2/account_service';
 import { FriendsDefinition } from '@pretendonetwork/grpc/friends/friends_service';
 import { config } from '@/config-manager';
 import { logger } from './logger';
 import type { FriendsClient } from '@pretendonetwork/grpc/friends/friends_service';
-import type { AccountClient } from '@pretendonetwork/grpc/account/account_service';
-import type { GetNEXDataResponse } from '@pretendonetwork/grpc/account/get_nex_data_rpc';
-import type { GetUserDataResponse } from '@pretendonetwork/grpc/account/get_user_data_rpc';
+import type { AccountServiceClient } from '@pretendonetwork/grpc/account/v2/account_service';
+import type { GetNEXDataResponse } from '@pretendonetwork/grpc/account/v2/get_nex_data_rpc';
+import type { GetUserDataResponse } from '@pretendonetwork/grpc/account/v2/get_user_data_rpc';
 import type { GetUserFriendPIDsResponse } from '@pretendonetwork/grpc/friends/get_user_friend_pids_rpc';
 import type { Request, Response } from 'express';
 import type { Stats } from 'node:fs';
 
 const gRPCAccountChannel = createChannel(`${config.grpc.account.address}:${config.grpc.account.port}`);
-const gRPCAccountClient: AccountClient = createClient(AccountDefinition, gRPCAccountChannel);
+const gRPCAccountServiceClient: AccountServiceClient = createClient(AccountServiceDefinition, gRPCAccountChannel);
 
 const gRPCFriendsChannel = createChannel(`${config.grpc.friends.address}:${config.grpc.friends.port}`);
 const gRPCFriendsClient: FriendsClient = createClient(FriendsDefinition, gRPCFriendsChannel);
@@ -90,7 +90,7 @@ export async function fileStatOrNull(filePath: string): Promise<Stats | null> {
 
 export async function getUserDataByPID(pid: number): Promise<GetUserDataResponse | null> {
 	try {
-		return await gRPCAccountClient.getUserData({
+		return await gRPCAccountServiceClient.getUserData({
 			pid: pid
 		}, {
 			metadata: Metadata({
@@ -105,7 +105,7 @@ export async function getUserDataByPID(pid: number): Promise<GetUserDataResponse
 
 export async function getNEXDataByPID(pid: number): Promise<GetNEXDataResponse | null> {
 	try {
-		return await gRPCAccountClient.getNEXData({
+		return await gRPCAccountServiceClient.getNEXData({
 			pid: pid
 		}, {
 			metadata: Metadata({
@@ -120,13 +120,14 @@ export async function getNEXDataByPID(pid: number): Promise<GetNEXDataResponse |
 
 export async function getUserDataByToken(token: string): Promise<GetUserDataResponse | null> {
 	try {
-		return await gRPCAccountClient.exchangeTokenForUserData({
+		const user = await gRPCAccountServiceClient.exchangeTokenForUserData({
 			token: token
 		}, {
 			metadata: Metadata({
 				'X-API-Key': config.grpc.account.api_key
 			})
 		});
+		return { ...user, linkedDevices: [] };
 	} catch (error) {
 		// TODO - Handle error
 		console.log(error);

@@ -1,8 +1,8 @@
 import { Status, ServerError } from 'nice-grpc';
 import { getUserDataByToken } from '@/util';
 import type { ServerMiddlewareCall, CallContext } from 'nice-grpc';
-import type { GetUserDataResponse } from '@pretendonetwork/grpc/account/get_user_data_rpc';
-import type { PNIDPermissionFlags } from '@pretendonetwork/grpc/account/pnid_permission_flags';
+import type { GetUserDataResponse } from '@pretendonetwork/grpc/account/v2/get_user_data_rpc';
+import type { PNIDPermissionFlags } from '@pretendonetwork/grpc/account/v2/pnid_permission_flags';
 
 export type AuthenticationCallContextExt = {
 	user: GetUserDataResponse | null;
