@@ -5,7 +5,7 @@ name: release
 # is the deploy. Node image, built per platform.
 on:
   push:
-    tags: ['v*']
+    tags: ['v*.*.*']
   workflow_dispatch:
 
 permissions:
