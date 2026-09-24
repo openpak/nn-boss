@@ -47,3 +47,12 @@ Deployed 2026-09-10 (HTTP 20080 behind Traefik), not console-verified.
 - README.md (config tables, CLI usage), example.env, seeding/README.md
 - ../prds/platform-wiiu-prd.md (C9, WU-3), ../prds/platform-3ds-prd.md (DS3-5)
 - ../nn-account, ../nn-friends (the two gRPC dependencies)
+
+## Scratch (research and throwaway work)
+
+Decompiles, Ghidra projects, dumps, exefs/romfs extracts, packet captures,
+strace and emulator logs, probe harnesses: put them in
+`~/REPOS/Openpak/scratch/<topic>`. That folder is a local mount of the media pool,
+outside every repository, so nothing in it is committed. Never use `/tmp` (a
+shared 15 GB RAM disk) or elsewhere on `/home` for this. Keys and signing
+material never go there. Rule: `docs/playbooks/conventions.md` in the workspace.
