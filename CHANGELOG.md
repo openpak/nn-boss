@@ -6,6 +6,10 @@ of truth; this file is the readable summary.
 Note: the early history below is the upstream project (Pretendo);
 OpenPak work starts at the port/fork commit.
 
+## v0.1.1 — 2026-09-24
+
+- deps: npm audit fix (axios, mongoose, undici, protobufjs, grpc-js, qs, …) and a scoped js-yaml override (Dependabot)
+
 ## v0.1.0 — 2026-09-10
 
 - OpenPak fork: account.v2 contract, tag-driven ghcr release, example.env [21b383a]
