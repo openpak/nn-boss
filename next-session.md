@@ -48,7 +48,7 @@ Since then only CI on `v*.*.*` tags (4defebc) and docs commits.
 ## Pointers
 
 - README.md (config tables, CLI usage), example.env, seeding/README.md
-- ../prds/platform-wiiu-prd.md (C9, WU-3), ../prds/platform-3ds-prd.md (DS3-5)
+- ../../../../prds/platform-wiiu-prd.md (C9, WU-3), ../../../../prds/platform-3ds-prd.md (DS3-5)
 - ../nn-account, ../nn-friends (the two gRPC dependencies)
 
 ## Scratch (research and throwaway work)
