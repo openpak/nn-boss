@@ -65,3 +65,4 @@ cdn/storage
 *.byaml.checksum
 *.bak
 !/seeding/**/*
+next-session.md
