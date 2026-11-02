@@ -32,10 +32,10 @@ npm start
 
 - [Protocol](docs/protocol.md)
 - [Deploy](docs/deploy.md)
-- [Notes](docs/notes.md)
-- [Upstream README](docs/upstream.md)
-- [Docs index](docs/README.md)
+- [Provenance](docs/provenance.md)
 
 ## Licence
 
 AGPL-3.0-only. See [LICENSE](LICENSE).
+
+PRDs: openpak/prds (private)

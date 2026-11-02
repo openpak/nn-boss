@@ -1,3 +1,9 @@
+# Provenance
+
+Based on [Pretendo `BOSS`](https://github.com/PretendoNetwork/BOSS) (AGPL-3.0). License as upstream; see LICENSE. The upstream README follows verbatim.
+
+---
+
 # Upstream README: nn-boss
 
 # BOSS
