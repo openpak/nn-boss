@@ -6,6 +6,13 @@ of truth; this file is the readable summary.
 Note: the early history below is the upstream project (Pretendo);
 OpenPak work starts at the port/fork commit.
 
+## v0.1.4 — 2026-11-03
+
+- npts: tasksheet data URLs use the `X-OpenPak-Npdi-Base` header when Traefik sets it (Wii U
+  system entrypoint, IP literal), so a console on Inkay-openpak v0.4.0 fetches SpotPass data with
+  no DNS record; otherwise the first configured npdi domain (before, a multi-domain
+  `PN_BOSS_CONFIG_DOMAINS_NPDI` was joined with commas into the URL)
+
 ## v0.1.3 — 2026-11-03
 
 - deps: npm audit fix closes the 9 Dependabot alerts (proxy-addr, body-parser, undici, moment, fast-copy, follow-redirects); the 16 remaining moderate items are the minimatch chain inside the eslint toolchain, dev-only, no non-breaking fix

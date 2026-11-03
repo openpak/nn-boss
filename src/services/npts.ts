@@ -10,7 +10,22 @@ const npts = express.Router();
 
 const xmlHeadSettings = { encoding: 'UTF-8', version: '1.0' };
 
-function buildFile(task: HydratedTaskDocument, file: HydratedFileWUPDocument, attributesMode: boolean): any {
+// Base of the data URLs a tasksheet hands out. Wii U system traffic that reaches us by IP literal
+// (Inkay-openpak's IOSU patches, Traefik entrypoint wiiu-system) carries X-OpenPak-Npdi-Base, set
+// by Traefik, so the console fetches the data by IP too and needs no DNS record. Everyone else
+// gets the configured npdi domain (the first one; the setting is a comma-separated list).
+const npdiBasePattern = /^https:\/\/[0-9.]+(:[0-9]{1,5})?$/;
+
+function npdiBase(request: express.Request<any, any, any, any>): string {
+	const header = request.get('X-OpenPak-Npdi-Base');
+	if (header && npdiBasePattern.test(header)) {
+		return header;
+	}
+
+	return `https://${config.domains.npdi[0]}`;
+}
+
+function buildFile(task: HydratedTaskDocument, file: HydratedFileWUPDocument, attributesMode: boolean, base: string): any {
 	if (attributesMode) {
 		return {
 			Filename: file.name,
@@ -28,7 +43,7 @@ function buildFile(task: HydratedTaskDocument, file: HydratedFileWUPDocument, at
 			Filename: file.name,
 			DataId: file.data_id,
 			Type: file.type,
-			Url: `https://${config.domains.npdi}/p01/data/1/${task.boss_app_id}/${file.data_id}/${file.hash}`,
+			Url: `${base}/p01/data/1/${task.boss_app_id}/${file.data_id}/${file.hash}`,
 			Size: file.size,
 			Notify: {
 				New: file.notify_on_new.join(','),
@@ -65,7 +80,7 @@ npts.get('/p01/tasksheet/:id/:bossAppId/:taskId', async (request: express.Reques
 			TaskId: task.id,
 			ServiceStatus: task.status,
 			Files: {
-				File: files.map(f => buildFile(task, f, mode === 'attr'))
+				File: files.map(f => buildFile(task, f, mode === 'attr', npdiBase(request)))
 			}
 		}
 	};
@@ -105,7 +120,7 @@ npts.get('/p01/tasksheet/:id/:bossAppId/:taskId/:fileName', async (request: expr
 			TaskId: task.id,
 			ServiceStatus: task.status,
 			Files: {
-				File: buildFile(task, file, mode === 'attr')
+				File: buildFile(task, file, mode === 'attr', npdiBase(request))
 			}
 		}
 	};
