@@ -41,6 +41,17 @@ export const logger = pino({
 	}
 }, pretty);
 
+// One line per request: method, path (never the query), status, duration. pino-http's default
+// serializers also write every request header, which carry bearer tokens and cookies.
 export const loggerHttp = pinoHttp({
-	logger: logger
+	logger: logger,
+	serializers: {
+		req: (req: { method?: string; url?: string }) => ({
+			method: req.method,
+			url: (req.url ?? '').split('?')[0]
+		}),
+		res: (res: { statusCode?: number }) => ({
+			statusCode: res.statusCode
+		})
+	}
 });

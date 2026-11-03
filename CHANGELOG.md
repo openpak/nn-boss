@@ -6,6 +6,11 @@ of truth; this file is the readable summary.
 Note: the early history below is the upstream project (Pretendo);
 OpenPak work starts at the port/fork commit.
 
+## v0.1.5 — 2026-11-03
+
+- The per-request log line now carries only method, path (never the query), status and duration.
+  pino-http's default serializers also wrote every request header (bearer tokens, cookies).
+
 ## v0.1.4 — 2026-11-03
 
 - npts: tasksheet data URLs use the `X-OpenPak-Npdi-Base` header when Traefik sets it (Wii U
