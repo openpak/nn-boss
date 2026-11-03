@@ -6,6 +6,14 @@ of truth; this file is the readable summary.
 Note: the early history below is the upstream project (Pretendo);
 OpenPak work starts at the port/fork commit.
 
+## v0.1.3 — 2026-11-03
+
+- deps: npm audit fix closes the 9 Dependabot alerts (proxy-addr, body-parser, undici, moment, fast-copy, follow-redirects); the 16 remaining moderate items are the minimatch chain inside the eslint toolchain, dev-only, no non-breaking fix
+
+## v0.1.2 — 2026-11-02
+
+- tools/find-boss-keys.py: locate the three BOSS keys in a firmware dump by MD5; docs/deploy.md "Dumping the keys"
+
 ## v0.1.1 — 2026-09-24
 
 - deps: npm audit fix (axios, mongoose, undici, protobufjs, grpc-js, qs, …) and a scoped js-yaml override (Dependabot)
