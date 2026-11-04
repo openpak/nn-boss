@@ -12,6 +12,7 @@ import npdi from '@/services/npdi';
 import npfl from '@/services/npfl';
 import npdl from '@/services/npdl';
 import spr from '@/services/spr';
+import { startEraseServer } from '@/erase';
 import { setupScheduler } from './scheduled';
 
 process.title = 'Pretendo - BOSS';
@@ -79,6 +80,8 @@ async function main(): Promise<void> {
 
 	await startGRPCServer();
 	logger.success(`gRPC server started at address ${config.grpc.boss.address}:${config.grpc.boss.port}`);
+
+	startEraseServer();
 
 	app.listen(config.http.port, () => {
 		logger.success(`HTTP server started on port ${config.http.port}`);

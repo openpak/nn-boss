@@ -10,10 +10,13 @@
 		"lint:fix": "eslint . --fix",
 		"build": "tsup && tsc --noEmit",
 		"start": "node --enable-source-maps dist/server.js",
-		"cli": "node --enable-source-maps dist/cli/cli.js"
+		"cli": "node --enable-source-maps dist/cli/cli.js",
+		"test": "tsup src/erase/erase.test.ts --format esm --platform node --out-dir dist-test --no-config --external node:test && sed -i 's/from \"test\"/from \"node:test\"/' dist-test/erase.test.mjs && node --test dist-test/erase.test.mjs"
 	},
 	"dependencies": {
 		"@aws-sdk/client-s3": "^3.723.0",
+		"@grpc/grpc-js": "^1.14.5",
+		"@grpc/proto-loader": "^0.8.1",
 		"@pretendonetwork/boss-crypto": "^1.2.2",
 		"@pretendonetwork/grpc": "^2.3.5",
 		"@typegoose/auto-increment": "^4.13.1",

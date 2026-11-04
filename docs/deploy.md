@@ -17,3 +17,16 @@ system-file access enabled in the plugin menu) and run:
 It scans every 16- and 32-byte window against the three MD5s `config-manager.ts` checks and prints the
 env values. The 3DS key is found the same way in a decrypted 3DS `boss` module or key-table dump.
 
+
+## Account erasure
+
+`DELETE /internal/accounts/{account_id}/data` with `Authorization: Bearer $ACCOUNT_ERASE_KEY`, on a separate
+listener `ERASE_ADDR` (default `:9099`; container network only, never published). It answers
+`{"service":"nn-boss","rows":N}`. Without `ACCOUNT_ERASE_KEY`, or without
+`PN_BOSS_CONFIG_OPEN_PAK_CORE_HOST`/`_PORT`/`_KEY` (the core's internal gRPC, as for nn-friends), it is not served.
+
+The account's PIDs are the wiiu/3ds links the core holds plus the PID nn-account resolves, so the website must
+erase nn-boss before nn-account and before the core finalises. Erased: the StreetPass mailbox (`CECData` and its
+stored payloads, `CECSlot`). Kept: tasks and SpotPass files, which are operator-published content; their
+`creator_pid` is set to 0. Repeat calls return 0 rows. `npm test` runs the unit tests; the Mongo test runs when
+`PN_BOSS_TEST_MONGO_URL` is set.

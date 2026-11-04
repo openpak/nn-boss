@@ -67,3 +67,4 @@ cdn/storage
 !/seeding/**/*
 next-session.md
 NEXT-SESSION.md
+dist-test

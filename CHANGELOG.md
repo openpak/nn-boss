@@ -6,6 +6,16 @@ of truth; this file is the readable summary.
 Note: the early history below is the upstream project (Pretendo);
 OpenPak work starts at the port/fork commit.
 
+## v0.2.0 — 2026-11-04
+
+- Account erasure (card openpak/prds#120): `DELETE /internal/accounts/{account_id}/data` with
+  `Authorization: Bearer $ACCOUNT_ERASE_KEY` on `ERASE_ADDR` (default `:9099`, container network only), answering
+  `{"service":"nn-boss","rows":N}`. Not served while `ACCOUNT_ERASE_KEY` or the core settings are unset.
+  PIDs come from the core's wiiu/3ds links (`ListAccountLinks`) plus the PID nn-account resolves, like nn-friends.
+  Deleted: the account's StreetPass mailbox (`CECData`, with its stored payloads, and `CECSlot`). Kept: tasks and
+  SpotPass files, which are operator-published content other players download; their `creator_pid` is set to 0
+  ("deleted user"). One `account erased` log line per run.
+
 ## v0.1.5 — 2026-11-03
 
 - The per-request log line now carries only method, path (never the query), status and duration.
