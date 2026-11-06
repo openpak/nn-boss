@@ -1,10 +1,9 @@
 import crypto from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import express from 'express';
-import { getDuplicateCECData, getRandomCECData } from '@/database';
+import { getDuplicateCECData, getRandomCECData, setCECSlot } from '@/database';
 import { getFriends } from '@/util';
 import { CECData } from '@/models/cec-data';
-import { CECSlot } from '@/models/cec-slot';
 import { SendMode } from '@/types/common/spr-slot';
 import { config } from '@/config-manager';
 import { restrictHostnames } from '@/middleware/host-limit';
@@ -198,10 +197,7 @@ spr.post('/relay/0', async (request, response) => {
 				}
 
 				if (slotData.id) {
-					await CECSlot.findOneAndUpdate({
-						creator_pid: request.pid,
-						game_id: slotData.game_id
-					}, { latest_data_id: slotData.id }, { upsert: true });
+					await setCECSlot(request.pid, slotData.game_id, slotData.id);
 				}
 			}
 

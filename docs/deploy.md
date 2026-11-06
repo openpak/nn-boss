@@ -28,5 +28,21 @@ listener `ERASE_ADDR` (default `:9099`; container network only, never published)
 The account's PIDs are the wiiu/3ds links the core holds plus the PID nn-account resolves, so the website must
 erase nn-boss before nn-account and before the core finalises. Erased: the StreetPass mailbox (`CECData` and its
 stored payloads, `CECSlot`). Kept: tasks and SpotPass files, which are operator-published content; their
-`creator_pid` is set to 0. Repeat calls return 0 rows. `npm test` runs the unit tests; the Mongo test runs when
-`PN_BOSS_TEST_MONGO_URL` is set.
+`creator_pid` is set to 0. Repeat calls return 0 rows. `npm test` runs the unit tests; the database tests run when
+`PN_BOSS_TEST_DATABASE_URL` points at a throwaway Postgres.
+
+
+## Postgres (v0.3.0)
+
+Database `boss`, role `boss`, set through `PN_BOSS_CONFIG_DATABASE_URL`. If it is unset the service logs the
+error and exits. Tables are created by the start-up migrations. To import old Mongo data once:
+
+```
+mongosh boss --quiet --eval 'db.tasks.find().sort({_id:1}).forEach(d => print(EJSON.stringify(d)))' > tasks.ndjson
+# likewise files-wup, files-ctr, cecdatas, cecslots; and db.identitycounters into counters.ndjson
+node scripts/migrate-from-mongo.cjs <dir>
+```
+
+Rollback: pin `Image=ghcr.io/openpak/nn-boss:0.2.0` in the quadlet and restore
+`PN_BOSS_CONFIG_MONGO_CONNECTION_STRING`; restart `openpak-nn-boss`. Content published after the cutover would
+have to be re-seeded (`npm run cli -- seed`).

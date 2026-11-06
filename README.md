@@ -6,7 +6,7 @@ OpenPak's Wii U/3DS BOSS Server.
 | --- | --- |
 | Network | Wii U, 3DS |
 | Role | BOSS (Background Online Storage Service): SpotPass content, tasksheets and policy files, and the optional Streetpass relay |
-| Depends on | [`nn-account`](https://github.com/openpak/nn-account), [`nn-friends`](https://github.com/openpak/nn-friends), MongoDB, S3 or disk storage |
+| Depends on | [`nn-account`](https://github.com/openpak/nn-account), [`nn-friends`](https://github.com/openpak/nn-friends), Postgres, S3 or disk storage |
 | Image | `ghcr.io/openpak/nn-boss` |
 | Based on | [Pretendo `BOSS`](https://github.com/PretendoNetwork/BOSS) (AGPL-3.0) |
 | Licence | AGPL-3.0-only |

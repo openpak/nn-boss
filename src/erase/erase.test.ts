@@ -1,16 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
-import mongoose from 'mongoose';
-import { CECData } from '@/models/cec-data';
-import { CECSlot } from '@/models/cec-slot';
-import { FileWUP } from '@/models/file-wup';
-import { FileCTR } from '@/models/file-ctr';
-import { Task } from '@/models/task';
+import { Pool } from 'pg';
+import { migrations } from '@/migrations';
 import { eraseByPids } from '@/erase/store';
 import { eraseAccount, eraseHandler } from '@/erase/core';
 import type { AddressInfo } from 'node:net';
-import type { EraseModels } from '@/erase/store';
 
 const ACCT = '11111111-2222-3333-4444-555555555555';
 
@@ -80,32 +75,36 @@ test('handler auth', async () => {
 	s.server.close();
 });
 
-// Needs a MongoDB (PN_BOSS_TEST_MONGO_URL); skipped without one.
-test('erase against mongo', { skip: !process.env.PN_BOSS_TEST_MONGO_URL }, async () => {
-	await mongoose.connect(process.env.PN_BOSS_TEST_MONGO_URL as string);
-	const models = { CECData, CECSlot, FileWUP, FileCTR, Task } as unknown as EraseModels;
-	const all = Object.values(models);
-	for (const m of all) {
-		await m.deleteMany({ creator_pid: { $in: [1900000001, 1900000002] } });
+// Needs a Postgres (PN_BOSS_TEST_DATABASE_URL); skipped without one.
+test('erase against postgres', { skip: !process.env.PN_BOSS_TEST_DATABASE_URL }, async () => {
+	const pool = new Pool({ connectionString: process.env.PN_BOSS_TEST_DATABASE_URL });
+	for (const m of migrations) {
+		await pool.query(m.sql);
 	}
-	for (const pid of [1900000001, 1900000002]) {
-		await CECData.create({ creator_pid: pid, game_id: 1, file_key: `${pid}-x`, data_hash: 'x', size: 1, created: 1n });
-		await CECSlot.create({ creator_pid: pid, game_id: 1, latest_data_id: 'a' });
-		await Task.create({ creator_pid: pid, status: 'open', id: `t${pid}`, boss_app_id: 'a' });
+	const pids = [1900000001, 1900000002];
+	const clean = async (): Promise<void> => {
+		for (const t of ['boss_cec_data', 'boss_cec_slots', 'boss_tasks', 'boss_files_wup', 'boss_files_ctr']) {
+			await pool.query(`DELETE FROM ${t} WHERE creator_pid = ANY($1::bigint[]) OR creator_pid = 0`, [pids]);
+		}
+	};
+	await clean();
+	for (const pid of pids) {
+		await pool.query('INSERT INTO boss_cec_data (creator_pid, game_id, file_key, data_hash, size, created) VALUES ($1, 1, $2, $3, 1, 1)', [pid, `${pid}-x`, 'x']);
+		await pool.query('INSERT INTO boss_cec_slots (creator_pid, game_id, latest_data_id) VALUES ($1, 1, \'a\')', [pid]);
+		await pool.query('INSERT INTO boss_tasks (creator_pid, status, id, boss_app_id) VALUES ($1, \'open\', $2, \'a\')', [pid, `t${pid}`]);
 	}
 	const deleted: string[] = [];
 	const del = async (keys: string[]): Promise<void> => {
 		deleted.push(...keys);
 	};
-	assert.equal(await eraseByPids([1900000001], models, del), 3);
-	assert.equal(await eraseByPids([1900000001], models, del), 0);
+	const count = async (sql: string, ...params: unknown[]): Promise<number> => Number((await pool.query(sql, params)).rows[0].count);
+	assert.equal(await eraseByPids([1900000001], pool, del), 3);
+	assert.equal(await eraseByPids([1900000001], pool, del), 0);
 	assert.deepEqual(deleted, ['1900000001-x']);
-	assert.equal(await CECData.countDocuments({ creator_pid: 1900000002 }), 1);
-	assert.equal(await CECSlot.countDocuments({ creator_pid: 1900000002 }), 1);
-	assert.equal(await Task.countDocuments({ creator_pid: 1900000002 }), 1);
-	assert.equal(await Task.countDocuments({ creator_pid: 0, id: 't1900000001' }), 1);
-	for (const m of all) {
-		await m.deleteMany({ creator_pid: { $in: [0, 1900000002] }, boss_app_id: { $in: ['a', undefined] } });
-	}
-	await mongoose.disconnect();
+	assert.equal(await count('SELECT count(*) FROM boss_cec_data WHERE creator_pid = $1', 1900000002), 1);
+	assert.equal(await count('SELECT count(*) FROM boss_cec_slots WHERE creator_pid = $1', 1900000002), 1);
+	assert.equal(await count('SELECT count(*) FROM boss_tasks WHERE creator_pid = $1', 1900000002), 1);
+	assert.equal(await count('SELECT count(*) FROM boss_tasks WHERE creator_pid = 0 AND id = \'t1900000001\''), 1);
+	await clean();
+	await pool.end();
 });

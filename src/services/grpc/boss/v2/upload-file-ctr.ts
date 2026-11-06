@@ -1,14 +1,15 @@
 import { Status, ServerError } from 'nice-grpc';
 import { CTR_BOSS_FLAGS, encrypt3DS } from '@pretendonetwork/boss-crypto';
 import { isValidCountryCode, isValidLanguage, md5 } from '@/util';
-import { connection as databaseConnection, getTask, getCTRTaskFile } from '@/database';
+import { getTask, getCTRTaskFile } from '@/database';
+import { withTransaction } from '@/postgres';
 import { FileCTR } from '@/models/file-ctr';
 import { config } from '@/config-manager';
 import { uploadCDNFile } from '@/cdn';
 import { hasPermission } from '@/services/grpc/boss/v2/middleware/authentication-middleware';
-import type { AuthenticationCallContextExt } from '@/services/grpc/boss/v2/middleware/authentication-middleware';
 import type { CallContext } from 'nice-grpc';
 import type { UploadFileCTRRequest, UploadFileCTRResponse } from '@pretendonetwork/grpc/boss/v2/upload_file_ctr';
+import type { AuthenticationCallContextExt } from '@/services/grpc/boss/v2/middleware/authentication-middleware';
 import type { HydratedFileCTRDocument } from '@/types/mongoose/file-ctr';
 
 const BOSS_APP_ID_FILTER_REGEX = /^[A-Za-z0-9]*$/;
@@ -66,73 +67,72 @@ export async function uploadFileCTR(request: UploadFileCTRRequest, context: Call
 		};
 	}
 
-	const session = await databaseConnection().startSession();
-	await session.startTransaction();
-
-	let file: HydratedFileCTRDocument | null;
+	let file: HydratedFileCTRDocument;
 
 	try {
+		file = await withTransaction(async (tx) => {
 		// * Create the FileCTR first since encrypt3DS relies on the serial number
-		file = await getCTRTaskFile(bossAppID, taskID, name);
+			const existing = await getCTRTaskFile(bossAppID, taskID, name);
 
-		if (file) {
-			file.deleted = true;
-			file.updated = BigInt(Date.now());
+			if (existing) {
+				existing.deleted = true;
+				existing.updated = BigInt(Date.now());
 
-			await file.save({ session });
-		}
+				await existing.save(tx);
+			}
 
-		[file] = await FileCTR.create([{
-			creator_pid: context.user?.pid,
-			// * hash: String,
-			// * file_key: String,
-			// * size: BigInt,
-			task_id: taskID,
-			boss_app_id: bossAppID,
-			supported_countries: supportedCountries,
-			supported_languages: supportedLanguages,
-			attributes: request.attributes,
-			name: name,
-			payload_contents: payloads.map(payload => ({
-				title_id: payload.titleId,
+			const created = await FileCTR.create({
+				creator_pid: context.user?.pid,
+				// * hash: String,
+				// * file_key: String,
+				// * size: BigInt,
+				task_id: taskID,
+				boss_app_id: bossAppID,
+				supported_countries: supportedCountries,
+				supported_languages: supportedLanguages,
+				attributes: request.attributes,
+				name: name,
+				payload_contents: payloads.map(payload => ({
+					title_id: payload.titleId,
+					content_datatype: payload.contentDatatype,
+					ns_data_id: payload.nsDataId,
+					version: payload.version,
+					size: payload.content.length
+				})),
+				flags: {
+					mark_arrived_privileged: request.flags?.markArrivedPrivileged || false
+				},
+				created: BigInt(Date.now()),
+				updated: BigInt(Date.now())
+			}, tx);
+
+			const cryptoOptions = payloads.map(payload => ({
+				program_id: payload.titleId,
 				content_datatype: payload.contentDatatype,
 				ns_data_id: payload.nsDataId,
 				version: payload.version,
-				size: payload.content.length
-			})),
-			flags: {
-				mark_arrived_privileged: request.flags?.markArrivedPrivileged || false
-			},
-			created: Date.now(),
-			updated: Date.now()
-		}], { session });
+				content: payload.content
+			}));
 
-		const cryptoOptions = payloads.map(payload => ({
-			program_id: payload.titleId,
-			content_datatype: payload.contentDatatype,
-			ns_data_id: payload.nsDataId,
-			version: payload.version,
-			content: payload.content
-		}));
+			let flags = 0n;
+			if (request.flags?.markArrivedPrivileged) {
+				flags |= CTR_BOSS_FLAGS.MARK_ARRIVED_PRIVILEGED;
+			}
 
-		let flags = 0n;
-		if (request.flags?.markArrivedPrivileged) {
-			flags |= CTR_BOSS_FLAGS.MARK_ARRIVED_PRIVILEGED;
-		}
+			// TODO - Somehow support pre-encrypted content?
+			const encryptedData = encrypt3DS(config.crypto.ctr.aes_key, created.serial_number, cryptoOptions, flags);
+			const contentHash = md5(encryptedData);
+			const key = `${bossAppID}/${taskID}/${contentHash}`;
 
-		// TODO - Somehow support pre-encrypted content?
-		const encryptedData = encrypt3DS(config.crypto.ctr.aes_key, file.serial_number, cryptoOptions, flags);
-		const contentHash = md5(encryptedData);
-		const key = `${bossAppID}/${taskID}/${contentHash}`;
+			await uploadCDNFile('taskFile', key, encryptedData);
 
-		await uploadCDNFile('taskFile', key, encryptedData);
+			created.hash = contentHash;
+			created.file_key = key;
+			created.size = BigInt(encryptedData.length);
 
-		file.hash = contentHash;
-		file.file_key = key;
-		file.size = BigInt(encryptedData.length);
-
-		await file.save({ session });
-		await session.commitTransaction();
+			await created.save(tx);
+			return created;
+		});
 	} catch (error: unknown) {
 		let message = 'Unknown file upload error';
 
@@ -141,8 +141,6 @@ export async function uploadFileCTR(request: UploadFileCTRRequest, context: Call
 		}
 
 		throw new ServerError(Status.ABORTED, message);
-	} finally {
-		await session.endSession();
 	}
 
 	return {

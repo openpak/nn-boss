@@ -1,43 +1,24 @@
-import mongoose from 'mongoose';
-import { AutoIncrementID } from '@typegoose/auto-increment';
-import type { IFileWUP, IFileWUPMethods, FileWUPModel } from '@/types/mongoose/file-wup';
+import { Table } from '@/models/table';
+import type { IFileWUP } from '@/types/mongoose/file-wup';
 
-const FileWUPSchema = new mongoose.Schema<IFileWUP, FileWUPModel, IFileWUPMethods>({
-	deleted: {
-		type: Boolean,
-		default: false
-	},
-	file_key: String,
-	data_id: BigInt,
-	task_id: String,
-	boss_app_id: String,
-	supported_countries: [String],
-	supported_languages: [String],
-	attributes: {
-		attribute1: String,
-		attribute2: String,
-		attribute3: String,
-		description: String
-	},
-	creator_pid: Number,
-	name: String,
-	type: String,
-	hash: String,
-	size: BigInt,
-	notify_on_new: [String],
-	notify_led: Boolean,
-	condition_played: BigInt,
-	auto_delete: Boolean, // * We don't know what this does, but it exists on WUP tasks. So track it
-	created: BigInt,
-	updated: BigInt
-}, { id: false });
-
-FileWUPSchema.plugin(AutoIncrementID, {
-	startAt: 50000, // * Start very high to avoid conflicts with Nintendo Data IDs
-	field: 'data_id'
-});
-
-FileWUPSchema.index({ task_id: 1, boss_app_id: 1 });
-FileWUPSchema.index({ task_id: 1, boss_app_id: 1, name: 1 });
-
-export const FileWUP = mongoose.model<IFileWUP, FileWUPModel>('FileWUP', FileWUPSchema, 'files-wup');
+export const FileWUP = new Table<IFileWUP>('boss_files_wup', 'row_id', [
+	{ field: 'deleted', kind: 'bool' },
+	{ field: 'file_key', kind: 'text' },
+	{ field: 'data_id', kind: 'bigint' }, // * from boss_wup_data_id_seq
+	{ field: 'task_id', kind: 'text' },
+	{ field: 'boss_app_id', kind: 'text' },
+	{ field: 'supported_countries', kind: 'textarr' },
+	{ field: 'supported_languages', kind: 'textarr' },
+	{ field: 'attributes', kind: 'json' },
+	{ field: 'creator_pid', kind: 'num' },
+	{ field: 'name', kind: 'text' },
+	{ field: 'type', kind: 'text' },
+	{ field: 'hash', kind: 'text' },
+	{ field: 'size', kind: 'bigint' },
+	{ field: 'notify_on_new', kind: 'textarr' },
+	{ field: 'notify_led', kind: 'bool' },
+	{ field: 'condition_played', kind: 'bigint' },
+	{ field: 'auto_delete', kind: 'bool' },
+	{ field: 'created', kind: 'bigint' },
+	{ field: 'updated', kind: 'bigint' }
+]);

@@ -27,7 +27,7 @@ Configurations are loaded through environment variables. `.env` files are suppor
 | `PN_BOSS_CONFIG_BOSS_WIIU_AES_KEY`                  | The BOSS WiiU AES key, needs to be dumped from a console            | None                                          |
 | `PN_BOSS_CONFIG_BOSS_WIIU_HMAC_KEY`                 | The BOSS WiiU HMAC key, needs to be dumped from a console           | None                                          |
 | `PN_BOSS_CONFIG_BOSS_3DS_AES_KEY`                   | The BOSS 3DS AES key, needs to be dumped from a console             | None                                          |
-| `PN_BOSS_CONFIG_MONGO_CONNECTION_STRING`            | MongoDB connection string                                           | None                                          |
+| `PN_BOSS_CONFIG_DATABASE_URL`                       | Postgres connection string (tables `boss_*`, migrated at start-up)  | None                                          |
 | `PN_BOSS_CONFIG_GRPC_MAX_RECEIVE_MESSAGE_LENGTH_MB` | The maximum size, in megabytes, a message sent to the server can be | 4                                             |
 | `PN_BOSS_CONFIG_GRPC_MAX_SEND_MESSAGE_LENGTH_MB`    | The maximum size, in megabytes, a message sent to the client can be | 4                                             |
 | `PN_BOSS_CONFIG_GRPC_BOSS_SERVER_ADDRESS`           | Address for the GRPC server to listen on                            | None                                          |

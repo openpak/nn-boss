@@ -6,6 +6,16 @@ of truth; this file is the readable summary.
 Note: the early history below is the upstream project (Pretendo);
 OpenPak work starts at the port/fork commit.
 
+## v0.3.0 — 2026-11-06
+
+- Postgres instead of Mongo (card openpak/prds#20). Tables `boss_tasks`, `boss_files_wup`, `boss_files_ctr`,
+  `boss_cec_data`, `boss_cec_slots`; additive migrations in `src/migrations.ts` run at start-up. WUP data ids and
+  CTR serial numbers come from sequences that start at 50000 (WUP continues after the old identity counter).
+  `PN_BOSS_CONFIG_DATABASE_URL` replaces `PN_BOSS_CONFIG_MONGO_CONNECTION_STRING`. Rollback: pin the image to
+  v0.2.0 and restore the Mongo variable (Mongo is kept read-only, not dropped).
+- `scripts/migrate-from-mongo.cjs`: one-shot import from mongosh extended-JSON exports, counts before and after.
+- Request logging unchanged (one line per request). mongoose and @typegoose/auto-increment removed.
+
 ## v0.2.0 — 2026-11-04
 
 - Account erasure (card openpak/prds#120): `DELETE /internal/accounts/{account_id}/data` with

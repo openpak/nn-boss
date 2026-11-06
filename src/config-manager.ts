@@ -63,8 +63,8 @@ export const config = {
 			api_key: process.env.PN_BOSS_CONFIG_GRPC_FRIENDS_SERVER_API_KEY?.trim() || ''
 		}
 	},
-	mongoose: {
-		connection_string: process.env.PN_BOSS_CONFIG_MONGO_CONNECTION_STRING?.trim() || ''
+	postgres: {
+		url: process.env.PN_BOSS_CONFIG_DATABASE_URL?.trim() || ''
 	},
 	cdn: {
 		s3: {
@@ -152,8 +152,8 @@ if (!config.grpc.friends.api_key) {
 	errors.push('Failed to find account server gRPC API key. Set the PN_BOSS_CONFIG_GRPC_FRIENDS_SERVER_API_KEY environment variable');
 }
 
-if (!config.mongoose.connection_string) {
-	errors.push('Failed to find MongoDB connection string. Set the PN_BOSS_CONFIG_MONGO_CONNECTION_STRING environment variable');
+if (!config.postgres.url) {
+	errors.push('Failed to find the Postgres connection string. Set the PN_BOSS_CONFIG_DATABASE_URL environment variable');
 }
 
 if (!config.cdn.s3.endpoint) {

@@ -2,13 +2,9 @@ import http from 'node:http';
 import { logger } from '@/logger';
 import { config } from '@/config-manager';
 import { bulkDeleteCdnFiles } from '@/cdn';
-import { CECData } from '@/models/cec-data';
-import { CECSlot } from '@/models/cec-slot';
-import { FileWUP } from '@/models/file-wup';
-import { FileCTR } from '@/models/file-ctr';
-import { Task } from '@/models/task';
 import { eraseAccount, eraseHandler, SERVICE } from '@/erase/core';
 import { eraseByPids } from '@/erase/store';
+import { db } from '@/postgres';
 import { makePidResolver } from '@/erase/pids';
 
 // Serves the erase endpoint on ERASE_ADDR (default :9099, container network only). Without
@@ -31,13 +27,12 @@ export function startEraseServer(): void {
 		core: { address: `${coreHost}:${corePort}`, key: coreKey },
 		account: { address: `${config.grpc.account.address}:${config.grpc.account.port}`, key: config.grpc.account.api_key }
 	});
-	const models = { CECData, CECSlot, FileWUP, FileCTR, Task };
 
 	const handler = eraseHandler(key, async (accountId) => {
 		try {
 			return await eraseAccount(accountId, {
 				resolvePids,
-				eraseByPids: pids => eraseByPids(pids, models, keys => bulkDeleteCdnFiles('spr', keys)),
+				eraseByPids: pids => eraseByPids(pids, db(), keys => bulkDeleteCdnFiles('spr', keys)),
 				log: (account, rows) => logger.info(`account erased account=${account} rows=${rows} service=${SERVICE}`)
 			});
 		} catch (error) {

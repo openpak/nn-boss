@@ -1,4 +1,4 @@
-import type { Model, HydratedDocument } from 'mongoose';
+import type { Doc } from '@/models/table';
 
 export interface IFileWUP {
 	deleted: boolean;
@@ -27,10 +27,4 @@ export interface IFileWUP {
 	updated: bigint;
 }
 
-export interface IFileWUPMethods {}
-
-interface IFileWUPQueryHelpers {}
-
-export type FileWUPModel = Model<IFileWUP, IFileWUPQueryHelpers, IFileWUPMethods>;
-
-export type HydratedFileWUPDocument = HydratedDocument<IFileWUP, IFileWUPMethods>;
+export type HydratedFileWUPDocument = Doc<IFileWUP>;

@@ -1,362 +1,135 @@
-import mongoose from 'mongoose';
-import { CECData } from '@/models/cec-data';
-import { CECSlot } from '@/models/cec-slot';
+import { db, connectPostgres } from '@/postgres';
 import { Task } from '@/models/task';
+import { CECData } from '@/models/cec-data';
 import { FileCTR } from '@/models/file-ctr';
 import { FileWUP } from '@/models/file-wup';
-import { config } from '@/config-manager';
 import type { HydratedCECDataDocument } from '@/types/mongoose/cec-data';
-import type { HydratedCECSlotDocument, ICECSlot } from '@/types/mongoose/cec-slot';
-import type { HydratedTaskDocument, ITask } from '@/types/mongoose/task';
-import type { HydratedFileCTRDocument, IFileCTR } from '@/types/mongoose/file-ctr';
-import type { HydratedFileWUPDocument, IFileWUP } from '@/types/mongoose/file-wup';
-
-const connection_string: string = config.mongoose.connection_string;
-
-let _connection: mongoose.Connection;
+import type { HydratedTaskDocument } from '@/types/mongoose/task';
+import type { HydratedFileCTRDocument } from '@/types/mongoose/file-ctr';
+import type { HydratedFileWUPDocument } from '@/types/mongoose/file-wup';
 
 export async function connect(): Promise<void> {
-	await mongoose.connect(connection_string);
-
-	_connection = mongoose.connection;
-	_connection.on('error', console.error.bind(console, 'connection error:'));
+	await connectPostgres();
 }
 
-export function connection(): mongoose.Connection {
-	return _connection;
-}
-
-export function verifyConnected(): void {
-	if (!connection()) {
-		throw new Error('Cannot make database requests without being connected');
+// * Country/language filter shared by the file queries. A file with an empty list is available
+// * everywhere; otherwise it must list the requested value. Without a requested value only the
+// * unrestricted files match, unless `any` is set.
+function localeFilter(params: unknown[], column: string, value: string | undefined, any: boolean): string | null {
+	if (value) {
+		params.push(value);
+		return `(${column} = '{}' OR $${params.length} = ANY(${column}))`;
 	}
+	return any ? null : `${column} = '{}'`;
 }
 
-export function getAllTasks(allowDeleted: boolean): Promise<HydratedTaskDocument[]> {
-	verifyConnected();
-
-	const filter: mongoose.FilterQuery<ITask> = {};
-
+function fileFilter(table: 'boss_files_ctr' | 'boss_files_wup', allowDeleted: boolean, bossAppID: string, taskID: string, country?: string, language?: string, any: boolean = false): { where: string; params: unknown[] } {
+	void table;
+	const params: unknown[] = [taskID.slice(0, 7), bossAppID];
+	const parts = ['task_id = $1', 'boss_app_id = $2'];
 	if (!allowDeleted) {
-		filter.deleted = false;
+		parts.push('deleted = false');
 	}
-
-	return Task.find(filter);
+	for (const part of [localeFilter(params, 'supported_countries', country, any), localeFilter(params, 'supported_languages', language, any)]) {
+		if (part) {
+			parts.push(part);
+		}
+	}
+	return { where: parts.join(' AND '), params };
 }
 
-export function getTask(bossAppID: string, taskID: string): Promise<HydratedTaskDocument | null> {
-	verifyConnected();
-
-	return Task.findOne<HydratedTaskDocument>({
-		deleted: false,
-		id: taskID.slice(0, 7),
-		boss_app_id: bossAppID
-	});
+export async function getAllTasks(allowDeleted: boolean): Promise<HydratedTaskDocument[]> {
+	const result = await db().query(`SELECT * FROM boss_tasks ${allowDeleted ? '' : 'WHERE deleted = false'} ORDER BY row_id`);
+	return Task.hydrateAll(result.rows);
 }
 
-export function getCTRTaskFiles(allowDeleted: boolean, bossAppID: string, taskID: string, country?: string, language?: string, any: boolean = false): Promise<HydratedFileCTRDocument[]> {
-	verifyConnected();
-
-	const filter: mongoose.FilterQuery<IFileCTR> = {
-		task_id: taskID.slice(0, 7),
-		boss_app_id: bossAppID,
-		$and: []
-	};
-
-	if (!allowDeleted) {
-		filter.deleted = false;
-	}
-
-	if (country) {
-		filter.$and?.push({
-			$or: [
-				{ supported_countries: { $eq: [] } },
-				{ supported_countries: country }
-			]
-		});
-	} else if (!any) {
-		filter.$and?.push({
-			supported_countries: { $eq: [] }
-		});
-	}
-
-	if (language) {
-		filter.$and?.push({
-			$or: [
-				{ supported_languages: { $eq: [] } },
-				{ supported_languages: language }
-			]
-		});
-	} else if (!any) {
-		filter.$and?.push({
-			supported_languages: { $eq: [] }
-		});
-	}
-
-	if (filter.$and?.length === 0) {
-		delete filter.$and;
-	}
-
-	return FileCTR.find(filter);
+export async function getTask(bossAppID: string, taskID: string): Promise<HydratedTaskDocument | null> {
+	const result = await db().query('SELECT * FROM boss_tasks WHERE deleted = false AND id = $1 AND boss_app_id = $2 ORDER BY row_id LIMIT 1', [taskID.slice(0, 7), bossAppID]);
+	return Task.hydrate(result.rows[0]);
 }
 
-export function getWUPTaskFiles(allowDeleted: boolean, bossAppID: string, taskID: string, country?: string, language?: string, any: boolean = false): Promise<HydratedFileWUPDocument[]> {
-	verifyConnected();
-
-	const filter: mongoose.FilterQuery<IFileWUP> = {
-		task_id: taskID.slice(0, 7),
-		boss_app_id: bossAppID,
-		$and: []
-	};
-
-	if (!allowDeleted) {
-		filter.deleted = false;
-	}
-
-	if (country) {
-		filter.$and?.push({
-			$or: [
-				{ supported_countries: { $eq: [] } },
-				{ supported_countries: country }
-			]
-		});
-	} else if (!any) {
-		filter.$and?.push({
-			supported_countries: { $eq: [] }
-		});
-	}
-
-	if (language) {
-		filter.$and?.push({
-			$or: [
-				{ supported_languages: { $eq: [] } },
-				{ supported_languages: language }
-			]
-		});
-	} else if (!any) {
-		filter.$and?.push({
-			supported_languages: { $eq: [] }
-		});
-	}
-
-	if (filter.$and?.length === 0) {
-		delete filter.$and;
-	}
-
-	return FileWUP.find(filter);
+export async function getCTRTaskFiles(allowDeleted: boolean, bossAppID: string, taskID: string, country?: string, language?: string, any: boolean = false): Promise<HydratedFileCTRDocument[]> {
+	const { where, params } = fileFilter('boss_files_ctr', allowDeleted, bossAppID, taskID, country, language, any);
+	const result = await db().query(`SELECT * FROM boss_files_ctr WHERE ${where} ORDER BY row_id`, params);
+	return FileCTR.hydrateAll(result.rows);
 }
 
-export function getCTRTaskFilesWithAttributes(allowDeleted: boolean, bossAppID: string, taskID: string, country?: string, language?: string, attribute1?: string, attribute2?: string, attribute3?: string): Promise<HydratedFileCTRDocument[]> {
-	verifyConnected();
-
-	const filter: mongoose.FilterQuery<IFileCTR> = {
-		task_id: taskID.slice(0, 7),
-		boss_app_id: bossAppID,
-		$and: []
-	};
-
-	if (!allowDeleted) {
-		filter.deleted = false;
-	}
-
-	if (country) {
-		filter.$and?.push({
-			$or: [
-				{ supported_countries: { $eq: [] } },
-				{ supported_countries: country }
-			]
-		});
-	} else {
-		filter.$and?.push({
-			supported_countries: { $eq: [] }
-		});
-	}
-
-	if (language) {
-		filter.$and?.push({
-			$or: [
-				{ supported_languages: { $eq: [] } },
-				{ supported_languages: language }
-			]
-		});
-	} else {
-		filter.$and?.push({
-			supported_languages: { $eq: [] }
-		});
-	}
-
-	if (attribute1) {
-		filter['attributes.attribute1'] = attribute1;
-	}
-
-	if (attribute2) {
-		filter['attributes.attribute2'] = attribute2;
-	}
-
-	if (attribute3) {
-		filter['attributes.attribute3'] = attribute3;
-	}
-
-	if (filter.$and?.length === 0) {
-		delete filter.$and;
-	}
-
-	return FileCTR.find(filter);
+export async function getWUPTaskFiles(allowDeleted: boolean, bossAppID: string, taskID: string, country?: string, language?: string, any: boolean = false): Promise<HydratedFileWUPDocument[]> {
+	const { where, params } = fileFilter('boss_files_wup', allowDeleted, bossAppID, taskID, country, language, any);
+	const result = await db().query(`SELECT * FROM boss_files_wup WHERE ${where} ORDER BY row_id`, params);
+	return FileWUP.hydrateAll(result.rows);
 }
 
-export function getCTRTaskFile(bossAppID: string, taskID: string, name: string, country?: string, language?: string): Promise<HydratedFileCTRDocument | null> {
-	verifyConnected();
-
-	const filter: mongoose.FilterQuery<IFileCTR> = {
-		deleted: false,
-		boss_app_id: bossAppID,
-		task_id: taskID.slice(0, 7),
-		name: name,
-		$and: []
-	};
-
-	if (country) {
-		filter.$and?.push({
-			$or: [
-				{ supported_countries: { $eq: [] } },
-				{ supported_countries: country }
-			]
-		});
-	} else {
-		filter.$and?.push({
-			supported_countries: { $eq: [] }
-		});
+export async function getCTRTaskFilesWithAttributes(allowDeleted: boolean, bossAppID: string, taskID: string, country?: string, language?: string, attribute1?: string, attribute2?: string, attribute3?: string): Promise<HydratedFileCTRDocument[]> {
+	// * Unlike getCTRTaskFiles, an absent country or language means "unrestricted files only" here
+	const { where, params } = fileFilter('boss_files_ctr', allowDeleted, bossAppID, taskID, country, language, false);
+	const parts = [where];
+	for (const [key, value] of [['attribute1', attribute1], ['attribute2', attribute2], ['attribute3', attribute3]]) {
+		if (value) {
+			params.push(key, value);
+			parts.push(`attributes ->> $${params.length - 1} = $${params.length}`);
+		}
 	}
-
-	if (language) {
-		filter.$and?.push({
-			$or: [
-				{ supported_languages: { $eq: [] } },
-				{ supported_languages: language }
-			]
-		});
-	} else {
-		filter.$and?.push({
-			supported_languages: { $eq: [] }
-		});
-	}
-
-	return FileCTR.findOne<HydratedFileCTRDocument>(filter);
+	const result = await db().query(`SELECT * FROM boss_files_ctr WHERE ${parts.join(' AND ')} ORDER BY row_id`, params);
+	return FileCTR.hydrateAll(result.rows);
 }
 
-export function getWUPTaskFile(bossAppID: string, taskID: string, name: string, country?: string, language?: string): Promise<HydratedFileWUPDocument | null> {
-	verifyConnected();
-
-	const filter: mongoose.FilterQuery<IFileWUP> = {
-		deleted: false,
-		boss_app_id: bossAppID,
-		task_id: taskID.slice(0, 7),
-		name: name,
-		$and: []
-	};
-
-	if (country) {
-		filter.$and?.push({
-			$or: [
-				{ supported_countries: { $eq: [] } },
-				{ supported_countries: country }
-			]
-		});
-	} else {
-		filter.$and?.push({
-			supported_countries: { $eq: [] }
-		});
-	}
-
-	if (language) {
-		filter.$and?.push({
-			$or: [
-				{ supported_languages: { $eq: [] } },
-				{ supported_languages: language }
-			]
-		});
-	} else {
-		filter.$and?.push({
-			supported_languages: { $eq: [] }
-		});
-	}
-
-	return FileWUP.findOne<HydratedFileWUPDocument>(filter);
+export async function getCTRTaskFile(bossAppID: string, taskID: string, name: string, country?: string, language?: string): Promise<HydratedFileCTRDocument | null> {
+	const { where, params } = fileFilter('boss_files_ctr', false, bossAppID, taskID, country, language, false);
+	params.push(name);
+	const result = await db().query(`SELECT * FROM boss_files_ctr WHERE ${where} AND name = $${params.length} ORDER BY row_id LIMIT 1`, params);
+	return FileCTR.hydrate(result.rows[0]);
 }
 
-export function getCTRTaskFileBySerialNumber(serialNumber: bigint): Promise<HydratedFileCTRDocument | null> {
-	verifyConnected();
-
-	return FileCTR.findOne<HydratedFileCTRDocument>({
-		deleted: false,
-		serial_number: serialNumber
-	});
+export async function getWUPTaskFile(bossAppID: string, taskID: string, name: string, country?: string, language?: string): Promise<HydratedFileWUPDocument | null> {
+	const { where, params } = fileFilter('boss_files_wup', false, bossAppID, taskID, country, language, false);
+	params.push(name);
+	const result = await db().query(`SELECT * FROM boss_files_wup WHERE ${where} AND name = $${params.length} ORDER BY row_id LIMIT 1`, params);
+	return FileWUP.hydrate(result.rows[0]);
 }
 
-export function getWUPTaskFileByDataID(dataID: bigint): Promise<HydratedFileWUPDocument | null> {
-	verifyConnected();
-
-	return FileWUP.findOne<HydratedFileWUPDocument>({
-		deleted: false,
-		data_id: Number(dataID)
-	});
+export async function getCTRTaskFileBySerialNumber(serialNumber: bigint): Promise<HydratedFileCTRDocument | null> {
+	const result = await db().query('SELECT * FROM boss_files_ctr WHERE deleted = false AND serial_number = $1', [String(serialNumber)]);
+	return FileCTR.hydrate(result.rows[0]);
 }
 
-export function getDuplicateCECData(pid: number, gameID: number): Promise<HydratedCECDataDocument | null> {
-	verifyConnected();
+export async function getWUPTaskFileByDataID(dataID: bigint): Promise<HydratedFileWUPDocument | null> {
+	const result = await db().query('SELECT * FROM boss_files_wup WHERE deleted = false AND data_id = $1', [String(dataID)]);
+	return FileWUP.hydrate(result.rows[0]);
+}
 
-	return CECData.findOne<HydratedCECDataDocument>({
-		creator_pid: pid,
-		game_id: gameID
-	});
+export async function getDuplicateCECData(pid: number, gameID: number): Promise<HydratedCECDataDocument | null> {
+	const result = await db().query('SELECT * FROM boss_cec_data WHERE creator_pid = $1 AND game_id = $2 LIMIT 1', [pid, gameID]);
+	return CECData.hydrate(result.rows[0]);
 }
 
 export async function getRandomCECData(pids: number[], gameID: number): Promise<HydratedCECDataDocument | null> {
-	verifyConnected();
-
 	// * We search through the CECSlot so that everyone has the same chance of getting their data picked up
-	const filter: mongoose.FilterQuery<ICECSlot> = {
-		creator_pid: {
-			$in: pids
-		},
-		game_id: gameID
-	};
+	const result = await db().query(
+		`SELECT d.* FROM boss_cec_slots s JOIN boss_cec_data d ON d.id = s.latest_data_id
+		  WHERE s.creator_pid = ANY($1::bigint[]) AND s.game_id = $2
+		  ORDER BY random() LIMIT 1`,
+		[pids, gameID]
+	);
+	return CECData.hydrate(result.rows[0]);
+}
 
-	const count = await CECSlot.countDocuments(filter);
-	const rand = Math.floor(Math.random() * count);
-
-	const cecSlot = await CECSlot.findOne<HydratedCECSlotDocument>(filter).skip(rand);
-
-	if (cecSlot) {
-		return CECData.findById(cecSlot.latest_data_id);
-	}
-
-	return null;
+// Upsert a user's slot to point at their newest StreetPass data.
+export async function setCECSlot(pid: number, gameID: number, latestDataID: string): Promise<void> {
+	await db().query(
+		`INSERT INTO boss_cec_slots (creator_pid, game_id, latest_data_id) VALUES ($1, $2, $3)
+		 ON CONFLICT (creator_pid, game_id) DO UPDATE SET latest_data_id = EXCLUDED.latest_data_id`,
+		[pid, gameID, latestDataID]
+	);
 }
 
 export async function deleteOldCECData(olderThan: Date, limit: number): Promise<{ id: string; file_key: string }[]> {
-	verifyConnected();
-
-	const toDelete = await CECData.find({
-		created: {
-			$lt: olderThan.getTime()
-		}
-	}).limit(limit).sort({ created: 1 }).select({ file_key: 1 });
-	const ids = toDelete.map(v => v.id);
-
-	await CECData.deleteMany({
-		_id: {
-			$in: ids
-		}
-	});
-
-	// Remove slot if their newest data is what we've just deleted
-	// This is safe because everything older than the deleted data is also gone
-	await CECSlot.deleteMany({
-		latest_data_id: {
-			$in: ids
-		}
-	});
-
-	return toDelete.map(v => ({ id: v.id, file_key: v.file_key }));
+	const result = await db().query(
+		`WITH old AS (SELECT id, file_key FROM boss_cec_data WHERE created < $1 ORDER BY created LIMIT $2),
+		      gone AS (DELETE FROM boss_cec_data d USING old WHERE d.id = old.id RETURNING d.id),
+		      slots AS (DELETE FROM boss_cec_slots s USING old WHERE s.latest_data_id = old.id RETURNING s.id)
+		 SELECT id, file_key FROM old`,
+		[String(olderThan.getTime()), limit]
+	);
+	return result.rows;
 }

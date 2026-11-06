@@ -1,4 +1,4 @@
-import type { Model, HydratedDocument } from 'mongoose';
+import type { Doc } from '@/models/table';
 
 export interface IFileCTR {
 	deleted: boolean;
@@ -32,10 +32,4 @@ export interface IFileCTR {
 	updated: bigint;
 }
 
-export interface IFileCTRMethods {}
-
-interface IFileCTRQueryHelpers {}
-
-export type FileCTRModel = Model<IFileCTR, IFileCTRQueryHelpers, IFileCTRMethods>;
-
-export type HydratedFileCTRDocument = HydratedDocument<IFileCTR, IFileCTRMethods>;
+export type HydratedFileCTRDocument = Doc<IFileCTR>;

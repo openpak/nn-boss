@@ -1,4 +1,4 @@
-import type { Model, HydratedDocument } from 'mongoose';
+import type { Doc } from '@/models/table';
 
 export interface ITask {
 	deleted: boolean;
@@ -14,10 +14,4 @@ export interface ITask {
 	updated: bigint;
 }
 
-export interface ITaskMethods { }
-
-interface ITaskQueryHelpers { }
-
-export type TaskModel = Model<ITask, ITaskQueryHelpers, ITaskMethods>;
-
-export type HydratedTaskDocument = HydratedDocument<ITask, ITaskMethods>;
+export type HydratedTaskDocument = Doc<ITask>;

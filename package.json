@@ -11,7 +11,7 @@
 		"build": "tsup && tsc --noEmit",
 		"start": "node --enable-source-maps dist/server.js",
 		"cli": "node --enable-source-maps dist/cli/cli.js",
-		"test": "tsup src/erase/erase.test.ts --format esm --platform node --out-dir dist-test --no-config --external node:test && sed -i 's/from \"test\"/from \"node:test\"/' dist-test/erase.test.mjs && node --test dist-test/erase.test.mjs"
+		"test": "sh scripts/test.sh"
 	},
 	"dependencies": {
 		"@aws-sdk/client-s3": "^3.723.0",
@@ -19,7 +19,6 @@
 		"@grpc/proto-loader": "^0.8.1",
 		"@pretendonetwork/boss-crypto": "^1.2.2",
 		"@pretendonetwork/grpc": "^2.3.5",
-		"@typegoose/auto-increment": "^4.13.1",
 		"commander": "^14.0.0",
 		"cron": "^4.3.3",
 		"dotenv": "^16.4.7",
@@ -27,8 +26,8 @@
 		"formidable": "^3.5.4",
 		"fs-extra": "^11.2.0",
 		"moment": "^2.30.1",
-		"mongoose": "^8.18.1",
 		"nice-grpc": "^2.1.10",
+		"pg": "^8.23.1",
 		"pino": "^9.9.1",
 		"pino-http": "^10.5.0",
 		"pino-pretty": "^13.1.1",
@@ -43,6 +42,7 @@
 		"@types/formidable": "^3.4.5",
 		"@types/fs-extra": "^11.0.4",
 		"@types/node": "^22.10.5",
+		"@types/pg": "^8.23.1",
 		"axios": "^1.7.9",
 		"eslint": "^9.17.0",
 		"tsup": "^8.3.5",
